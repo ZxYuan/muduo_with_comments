@@ -23,7 +23,7 @@ string readFile(const char* filename)
     // inefficient!!!
     const int kBufSize = 1024*1024;
     char iobuf[kBufSize];
-    // 设置缓冲区
+    // 设置缓冲区，替换fp默认的block buffer
     ::setbuffer(fp, iobuf, sizeof iobuf);
 
     char buf[kBufSize];
@@ -47,13 +47,13 @@ void onConnection(const TcpConnectionPtr& conn)
   LOG_INFO << "FileServer - " << conn->peerAddress().toIpPort() << " -> "
            << conn->localAddress().toIpPort() << " is "
            << (conn->connected() ? "UP" : "DOWN");
-  if (conn->connected())
+  if (conn->connected()) // 为什么还要判断？
   {
     LOG_INFO << "FileServer - Sending file " << g_file
              << " to " << conn->peerAddress().toIpPort();
-    conn->setHighWaterMarkCallback(onHighWaterMark, 64*1024);
+    conn->setHighWaterMarkCallback(onHighWaterMark, 64*1024); // 当buffer长度超过参数2时触发回调
     string fileContent = readFile(g_file);
-    conn->send(fileContent); // 一次性发送所有的内容
+    conn->send(fileContent); // 一次性发送所有的内容，这里send是阻塞的吗？
     conn->shutdown();
     LOG_INFO << "FileServer - done";
   }
@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
     EventLoop loop;
     InetAddress listenAddr(2021);
     TcpServer server(&loop, listenAddr, "FileServer");
-    server.setConnectionCallback(onConnection);
+    server.setConnectionCallback(onConnection); // 相当于已连接套接字的handler
     server.start();
     loop.loop();
   }
